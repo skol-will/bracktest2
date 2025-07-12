@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IFL Playoff Bracket with Logos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #121212;
+      font-family: 'Orbitron', sans-serif;
+      color: white;
+      overflow-x: auto;
+    }
+
+    .bracket-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 20px;
+    }
+
+    .bracket-header {
+      display: flex;
+      margin-bottom: 10px;
+    }
+
+    .bracket-header div {
+      width: 184px; /* 144px card + 40px margin-right */
+      text-align: center;
+      font-size: 18px;
+    }
+
+    .brackets {
+      display: flex;
+      position: relative;
+    }
+
+    .round {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-right: 40px;
+      position: relative;
+    }
+
+    .matchup {
+      margin: 30px 0;
+      position: relative;
+    }
+
+    .team-card {
+      width: 144px;
+      height: 40px;
+      background-color: #1e1e1e;
+      color: white;
+      cursor: pointer;
+      margin: 5px 0;
+      position: relative;
+      z-index: 1;
+
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 2px solid #333;
+      border-radius: 6px;
+      padding: 0 8px;
+      box-sizing: border-box;
+      user-select: none;
+      transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+    }
+
+    .team-card img {
+      height: 32px;
+      width: 32px;
+      object-fit: contain;
+      border-radius: 4px;
+      flex-shrink: 0;
+      background: #222;
+      border: 1px solid #444;
+    }
+
+    .team-card span {
+      flex-grow: 1;
+      font-weight: normal;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .team-card.selected {
+      border-color: #00bfff;
+      background-color: #00bfff;
+      color: black;
+      font-weight: bold;
+    }
+
+    .champion-section {
+      margin-top: 40px;
+      text-align: center;
+      width: 100%;
+    }
+
+    .champion-card {
+      width: 144px;
+      height: 40px;
+      background-color: gold;
+      color: black;
+      line-height: 40px;
+      font-weight: bold;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 6px;
+    }
+
+    .champion-card img {
+      height: 32px;
+      width: 32px;
+      object-fit: contain;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #fff;
+    }
+
+    .line {
+      position: absolute;
+      width: 40px;
+      height: 2px;
+      background: #555;
+      top: 20px;
+      left: 144px;
+      z-index: 0;
+    }
+
+    .connector {
+      position: absolute;
+      width: 2px;
+      height: 60px;
+      background: #555;
+      left: 184px;
+      top: -30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bracket-container">
+    <div class="bracket-header">
+      <div>Divisional</div>
+      <div>Conference</div>
+      <div>Championship</div>
+    </div>
+
+    <div class="brackets">
+      <!-- Divisional Round -->
+      <div class="round" id="divisional"></div>
+
+      <!-- Conference Round -->
+      <div class="round" id="conference"></div>
+
+      <!-- Championship Round -->
+      <div class="round" id="championship"></div>
+    </div>
+
+    <div class="champion-section">
+      <h2>🏆 Champion 🏆</h2>
+      <div id="champion" class="champion-card">?</div>
+    </div>
+  </div>
+
+<script>
+  // Example initial teams with logos for Divisional round (8 teams)
+  // Replace this with your real data dynamically from stage 1 & 2 selections
+  const initialDivisionalTeams = [
+    { name: "Australia Whites", logo: "https://res.cloudinary.com/de4q4iitx/image/upload/v1752182184/australia-whites_h9o2vz.png" },
+    { name: "Italia Bulls", logo: "https://res.cloudinary.com/de4q4iitx/image/upload/v1752182185/italia-bulls_aocvis.png" },
+    { name: "Germany Cavaliers", logo: "https://res.cloudinary.com/de4q4iitx/image/upload/v1752182185/germany-cavaliers_qrcojc.png" },
+    { name: "UK 3 Lions", logo: "https://res.cloudinary.com/de4q4iitx/image/upload/v1752182186/uk-tri-lions_kyixfr.png" },
+    { name: "USA Drones", logo: "https://res.cloudinary.com/de4q4iitx/image/upload/v1752182187/usa-drones_doeba8.png" },
+    { name: "Jamaica Thunder", logo: "https://res.cloudinary.com/de4q4iitx/image/upload/v1752182185/jamaica-thunder_ogo7aj.png" },
+    { name: "South Africa Silverbacks", logo: "https://res.cloudinary.com/de4q4iitx/image/upload/v1752182186/southafrica-silverbaks_x6but2.png" },
+    { name: "Brazil Hummingbirds", logo: "https://res.cloudinary.com/de4q4iitx/image/upload/v1752182185/brazil-hummingbirds_dras9r.png" },
+  ];
+
+  const bracketData = {
+    divisional: [null, null, null, null],
+    conference: [],
+    championship: []
+  };
+
+  function createMatchup(team1, team2, matchIndex, roundId) {
+    const matchup = document.createElement('div');
+    matchup.className = 'matchup';
+    matchup.dataset.match = matchIndex;
+
+    function createTeamCard(team) {
+      const card = document.createElement('div');
+      card.className = 'team-card';
+      if (!team) {
+        card.textContent = "TBD";
+        card.style.opacity = 0.6;
+        card.style.cursor = "default";
+        return card;
+      }
+      card.dataset.name = team.name;
+      card.innerHTML = `<img src="${team.logo}" alt="${team.name} logo" /><span>${team.name}</span>`;
+      card.onclick = () => selectTeam(card, matchIndex, roundId);
+      return card;
+    }
+
+    const teamCard1 = createTeamCard(team1);
+    const teamCard2 = createTeamCard(team2);
+
+    matchup.appendChild(teamCard1);
+    matchup.appendChild(teamCard2);
+
+    return matchup;
+  }
+
+  function renderRound(roundId, teams) {
+    const container = document.getElementById(roundId);
+    container.innerHTML = "";
+    bracketData[roundId] = new Array(teams.length / 2).fill(null);
+
+    for (let i = 0; i < teams.length; i += 2) {
+      const matchup = createMatchup(teams[i], teams[i + 1], i / 2, roundId);
+      container.appendChild(matchup);
+    }
+  }
+
+  function selectTeam(el, matchIndex, roundId) {
+    const container = document.getElementById(roundId);
+    const matchup = container.querySelector(`.matchup[data-match="${matchIndex}"]`);
+
+    // Deselect other in matchup
+    Array.from(matchup.children).forEach(card => card.classList.remove('selected'));
+    el.classList.add('selected');
+
+    bracketData[roundId][matchIndex] = {
+      name: el.dataset.name,
+      logo: el.querySelector('img').src
+    };
+
+    // Check if entire round is complete
+    const isComplete = bracketData[roundId].every(x => x !== null);
+
+    if (isComplete) {
+      if (roundId === 'divisional') {
+        const nextRoundTeams = [];
+        bracketData.divisional.forEach(match => nextRoundTeams.push(match, null));
+        // The nulls are placeholders, we'll fill on next selections
+        // But for simplicity, just pass winners alternating in pairs for next round
+        const simplifiedNextRound = [];
+        for(let i=0; i < bracketData.divisional.length; i+=2) {
+          simplifiedNextRound.push(bracketData.divisional[i]);
+          simplifiedNextRound.push(bracketData.divisional[i+1]);
+        }
+        createNextRound('conference', bracketData.divisional);
+      } else if (roundId === 'conference') {
+        createNextRound('championship', bracketData.conference);
+      } else if (roundId === 'championship') {
+        const champion = bracketData.championship[0];
+        if (champion) {
+          const champEl = document.getElementById('champion');
+          champEl.textContent = champion.name;
+          champEl.innerHTML = `<img src="${champion.logo}" alt="${champion.name} logo" /><span>${champion.name}</span>`;
+        }
+      }
+    }
+  }
+
+  function createNextRound(nextRoundId, previousRoundTeams) {
+    const container = document.getElementById(nextRoundId);
+    container.innerHTML = "";
+    bracketData[nextRoundId] = [];
+
+    for (let i = 0; i < previousRoundTeams.length; i += 2) {
+      const team1 = previousRoundTeams[i];
+      const team2 = previousRoundTeams[i + 1] || null;
+      const matchup = createMatchup(team1, team2, i / 2, nextRoundId);
+      container.appendChild(matchup);
+      bracketData[nextRoundId].push(null);
+    }
+  }
+
+  // Initialize Divisional round on load
+  renderRound('divisional', initialDivisionalTeams);
+</script>
+</body>
+</html>
